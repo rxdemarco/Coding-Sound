@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeMarco Music Box</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.5/Tone.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        input[type="checkbox"] { width: 20px; height: 20px; margin: 2px; }
+        .grid { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        .row { display: flex; gap: 5px; }
+        button, input[type="range"] { margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>DeMarco Music Box</h1>
+    <button id="play-btn">Play</button>
+    <button id="rando-btn">Randomize Voices</button>
+    <p>Pitch Slider</p>
+    <input type="range" id="pitchShift" min="1" max="5" step="0.1" value="3">
+
+    <div class="grid">
+        <div class="row" id="row1"></div>
+        <div class="row" id="row2"></div>
+        <div class="row" id="row3"></div>
+    </div>
+
+<script>
+    // Synths
+    const synths = [
+        new Tone.Synth({ oscillator: { type: "triangle" } }),
+        new Tone.Synth({ oscillator: { type: "sine" } }),
+        new Tone.Synth({ oscillator: { type: "sawtooth" } })
+    ];
+
+    // Effects
+    const reverb = new Tone.Reverb({ decay: 3, wet: 0.5 }).toDestination();
+    const chorus = new Tone.Chorus(4, 2.5, 0.5).start().toDestination();
+    synths.forEach(s => s.connect(reverb).connect(chorus));
+
+    // Step Sequencer
+    const steps = 8;
+    const rows = [document.getElementById("row1"), document.getElementById("row2"), document.getElementById("row3")];
+    const checkboxes = [];
+
+    rows.forEach((row, i) => {
+        checkboxes[i] = [];
+        for (let j = 0; j < steps; j++) {
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            row.appendChild(cb);
+            checkboxes[i].push(cb);
+        }
+    });
+
+    // Randomizer
+    rows.forEach((row, i) => {
+        for (let j = 0; j < steps; j++) {
+            if (Math.random() < 0.3) checkboxes[i][j].checked = true; // 30% chance note is on
+        }
+    });
+
+    // Notes/Pitch
+    let pitchShift = 3;
+    const baseNotes = [174.6, 164.8, 110]; // one per synth
+    function getNotes() { return baseNotes.map(n => n * pitchShift); }
+
+    document.getElementById("pitchShift").addEventListener("input", e => {
+        pitchShift = parseFloat(e.target.value);
+    });
+
+    // Step Sequencer Function
+    let index = 0;
+    function repeat(time) {
+        const notes = getNotes();
+        for (let i = 0; i < synths.length; i++) {
+            const synth = synths[i];
+            const cb = checkboxes[i][index % steps];
+            if (cb.checked) {
+                synth.triggerAttackRelease(notes[i], "8n", time);
+            }
+        }
+        index++;
+    }
+
+    Tone.Transport.scheduleRepeat(repeat, "8n");
+
+    // Play/Pause
+    const playBtn = document.getElementById("play-btn");
+    let isPlaying = false;
+    playBtn.addEventListener("click", async () => {
+        await Tone.start();
+        if (!isPlaying) {
+            Tone.Transport.start();
+            playBtn.textContent = "Pause";
+        } else {
+            Tone.Transport.pause();
+            playBtn.textContent = "Play";
+        }
+        isPlaying = !isPlaying;
+    });
+
+    // Randomized Voices
+    const voices = ["triangle", "sine", "sawtooth", "square"];
+    document.getElementById("rando-btn").addEventListener("click", () => {
+        synths.forEach(s => s.oscillator.type = voices[Math.floor(Math.random() * voices.length)]);
+    });
+
+</script>
+</body>
+</html>
