@@ -9,113 +9,164 @@
     body {
       background: radial-gradient(circle at center, #0f2027, #203a43, #2c5364);
       color: white;
-      font-family: 'Helvetica Neue', sans-serif;
+      font-family: 'Poppins', sans-serif;
       text-align: center;
       padding: 20px;
+      user-select: none;
     }
 
     h1 {
-      margin-bottom: 10px;
+      margin-bottom: 0;
+      font-size: 2em;
+    }
+
+    h3 {
+      margin-top: 5px;
+      color: #ccc;
+      font-weight: normal;
     }
 
     #grid {
       display: grid;
-      grid-template-columns: repeat(3, 120px);
-      grid-gap: 15px;
+      grid-template-columns: repeat(3, 130px);
+      gap: 15px;
       justify-content: center;
-      margin-top: 30px;
+      margin: 40px auto;
     }
 
     .pad {
-      width: 120px;
-      height: 120px;
-      border-radius: 15px;
+      width: 130px;
+      height: 130px;
+      border-radius: 18px;
       border: none;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
       font-size: 1.1rem;
       font-weight: bold;
       color: white;
+      box-shadow: 0 0 15px rgba(255,255,255,0.1);
     }
 
-    .pad:active {
-      transform: scale(0.95);
-      filter: brightness(1.4);
+    .pad.active {
+      transform: scale(0.93);
+      box-shadow: 0 0 30px 10px rgba(255,255,255,0.3);
+      filter: brightness(1.3);
     }
 
     #controls {
-      margin-top: 30px;
+      margin-top: 40px;
+    }
+
+    .slider-group {
+      margin: 15px;
     }
 
     input[type="range"] {
       width: 200px;
     }
+
+    .keymap {
+      margin-top: 20px;
+      color: #bbb;
+      font-size: 0.9em;
+    }
+
   </style>
 </head>
 
 <body>
   <h1>Color Pad</h1>
-  <p>Click a pad to play and experiment with the modulation below!</p>
+  <h3>Click or press keys A–L to play!</h3>
 
   <div id="grid">
-    <button class="pad" style="background:#e74c3c" data-note="C4">Red</button>
-    <button class="pad" style="background:#f1c40f" data-note="E4">Yellow</button>
-    <button class="pad" style="background:#2ecc71" data-note="G4">Green</button>
-    <button class="pad" style="background:#3498db" data-note="B4">Blue</button>
-    <button class="pad" style="background:#9b59b6" data-note="D5">Purple</button>
-    <button class="pad" style="background:#1abc9c" data-note="A4">Cyan</button>
-    <button class="pad" style="background:#e67e22" data-note="F4">Orange</button>
-    <button class="pad" style="background:#ecf0f1; color:black;" data-note="C5">White</button>
-    <button class="pad" style="background:#34495e" data-note="G3">Dark</button>
+    <button class="pad" style="background:#e74c3c" data-note="C4" data-key="A">Red</button>
+    <button class="pad" style="background:#f1c40f" data-note="D4" data-key="S">Yellow</button>
+    <button class="pad" style="background:#2ecc71" data-note="E4" data-key="D">Green</button>
+    <button class="pad" style="background:#3498db" data-note="G4" data-key="F">Blue</button>
+    <button class="pad" style="background:#9b59b6" data-note="A4" data-key="G">Purple</button>
+    <button class="pad" style="background:#1abc9c" data-note="B4" data-key="H">Cyan</button>
+    <button class="pad" style="background:#e67e22" data-note="C5" data-key="J">Orange</button>
+    <button class="pad" style="background:#ecf0f1; color:black;" data-note="D5" data-key="K">White</button>
+    <button class="pad" style="background:#34495e" data-note="E5" data-key="L">Dark</button>
   </div>
 
   <div id="controls">
-    <p>LFO Speed: <input type="range" id="lfoSpeed" min="0.1" max="10" step="0.1" value="2"></p>
-    <p>LFO Depth: <input type="range" id="lfoDepth" min="0" max="50" step="1" value="10"></p>
+    <div class="slider-group">
+      <label>LFO Speed: </label>
+      <input type="range" id="lfoSpeed" min="0.1" max="10" step="0.1" value="2">
+    </div>
+
+    <div class="slider-group">
+      <label>LFO Depth: </label>
+      <input type="range" id="lfoDepth" min="0" max="50" step="1" value="10">
+    </div>
+
+    <div class="slider-group">
+      <label>Reverb Wet: </label>
+      <input type="range" id="reverbWet" min="0" max="1" step="0.05" value="0.4">
+    </div>
   </div>
 
+  <p class="keymap">Keyboard mapping: A–L → grid left-to-right</p>
+
   <script>
-    // Create a global reverb and connect it to the destination
+    // --- AUDIO SETUP ---
     const reverb = new Tone.Reverb({ decay: 3, wet: 0.4 }).toDestination();
-
-    // Create a filter that will be modulated by an LFO
     const filter = new Tone.Filter(800, "lowpass").connect(reverb);
-
-    // LFO to modulate the filter cutoff
     const lfo = new Tone.LFO(2, 200, 2000).start();
     lfo.connect(filter.frequency);
 
-    // Pad sounds (using different synth types)
-    const synths = [
-      new Tone.FMSynth().connect(filter),
-      new Tone.AMSynth().connect(filter),
-      new Tone.Synth().connect(filter),
-      new Tone.DuoSynth().connect(filter),
-      new Tone.MetalSynth().connect(filter),
-      new Tone.MembraneSynth().connect(filter),
-      new Tone.PluckSynth().connect(filter),
-      new Tone.MonoSynth().connect(filter),
-      new Tone.Synth().connect(filter),
-    ];
+    // PolySynth so multiple notes can overlap
+    const synth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.02, decay: 0.3, sustain: 0.5, release: 0.5 }
+    }).connect(filter);
 
+    // --- INTERFACE LOGIC ---
     const pads = document.querySelectorAll(".pad");
+    const keyMap = {};
 
-    pads.forEach((pad, index) => {
+    pads.forEach(pad => {
+      const note = pad.dataset.note;
+      const key = pad.dataset.key.toLowerCase();
+      keyMap[key] = pad;
+
       pad.addEventListener("click", async () => {
         await Tone.start();
-        const note = pad.getAttribute("data-note");
-        synths[index].triggerAttackRelease(note, "8n");
-        pad.style.transform = "scale(0.9)";
-        setTimeout(() => pad.style.transform = "scale(1)", 150);
+        playPad(pad, note);
       });
     });
 
-    // LFO control sliders
+    // Handle key presses
+    document.addEventListener("keydown", e => {
+      const key = e.key.toLowerCase();
+      const pad = keyMap[key];
+      if (pad && !pad.classList.contains("active")) {
+        playPad(pad, pad.dataset.note);
+      }
+    });
+
+    document.addEventListener("keyup", e => {
+      const key = e.key.toLowerCase();
+      const pad = keyMap[key];
+      if (pad) pad.classList.remove("active");
+    });
+
+    // Function to play sound and animate
+    function playPad(pad, note) {
+      pad.classList.add("active");
+      synth.triggerAttackRelease(note, "8n");
+      setTimeout(() => pad.classList.remove("active"), 150);
+    }
+
+    // --- SLIDERS CONTROL ---
     const lfoSpeed = document.getElementById("lfoSpeed");
     const lfoDepth = document.getElementById("lfoDepth");
+    const reverbWet = document.getElementById("reverbWet");
 
     lfoSpeed.addEventListener("input", () => lfo.frequency.value = lfoSpeed.value);
     lfoDepth.addEventListener("input", () => lfo.max = 200 + parseFloat(lfoDepth.value) * 30);
+    reverbWet.addEventListener("input", () => reverb.wet.value = parseFloat(reverbWet.value));
   </script>
 </body>
 </html>
