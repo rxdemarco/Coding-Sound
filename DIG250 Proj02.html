@@ -110,19 +110,16 @@
   <p class="keymap">Keyboard mapping: A–L → grid left-to-right</p>
 
   <script>
-    // --- AUDIO SETUP ---
     const reverb = new Tone.Reverb({ decay: 3, wet: 0.4 }).toDestination();
     const filter = new Tone.Filter(800, "lowpass").connect(reverb);
     const lfo = new Tone.LFO(2, 200, 2000).start();
     lfo.connect(filter.frequency);
 
-    // PolySynth so multiple notes can overlap
     const synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "sine" },
       envelope: { attack: 0.02, decay: 0.3, sustain: 0.5, release: 0.5 }
     }).connect(filter);
 
-    // --- INTERFACE LOGIC ---
     const pads = document.querySelectorAll(".pad");
     const keyMap = {};
 
@@ -137,7 +134,6 @@
       });
     });
 
-    // Handle key presses
     document.addEventListener("keydown", e => {
       const key = e.key.toLowerCase();
       const pad = keyMap[key];
@@ -152,14 +148,12 @@
       if (pad) pad.classList.remove("active");
     });
 
-    // Function to play sound and animate
     function playPad(pad, note) {
       pad.classList.add("active");
       synth.triggerAttackRelease(note, "8n");
       setTimeout(() => pad.classList.remove("active"), 150);
     }
 
-    // --- SLIDERS CONTROL ---
     const lfoSpeed = document.getElementById("lfoSpeed");
     const lfoDepth = document.getElementById("lfoDepth");
     const reverbWet = document.getElementById("reverbWet");
